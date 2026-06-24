@@ -137,27 +137,43 @@ Estrutura do JSON esperada:
   "gorduras_totais": 5.2
 }`
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageInput,
+    let responseContent = ''
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageInput,
+                },
               },
-            },
-          ],
-        },
-      ],
-      max_tokens: 1000,
-      temperature: 0.2,
-    })
+            ],
+          },
+        ],
+        max_tokens: 1000,
+        temperature: 0.2,
+      })
+      responseContent = response.choices[0]?.message?.content || ''
+    } catch (apiError: any) {
+      console.warn('Erro ao chamar OpenAI API, ativando fallback automático para o Modo Sandbox (Mock):', apiError.message || apiError)
+      
+      // Simular delay de análise da IA (1.5 segundos)
+      await new Promise((resolve) => setTimeout(resolve, 1500))
 
-    const responseContent = response.choices[0]?.message?.content || ''
+      // Selecionar um prato mockado aleatório
+      const randomIndex = Math.floor(Math.random() * MOCK_MEALS.length)
+      const mockResult = MOCK_MEALS[randomIndex]
+
+      return NextResponse.json({
+        ...mockResult,
+        warning: 'Excedeu a cota da OpenAI ou ocorreu um erro. Usando dados fictícios do modo Sandbox.'
+      })
+    }
     
     // Limpar marcações de código markdown se o GPT tiver gerado por engano
     const cleanJsonString = responseContent

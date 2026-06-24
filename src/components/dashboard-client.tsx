@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
 import Link from 'next/link'
 import {
   IconPlus,
@@ -373,7 +372,7 @@ export function DashboardClient({
                 fill="transparent"
               />
               {/* Animated progress circle */}
-              <motion.circle
+              <circle
                 cx="96"
                 cy="96"
                 r="80"
@@ -381,9 +380,8 @@ export function DashboardClient({
                 strokeWidth="12"
                 fill="transparent"
                 strokeDasharray={2 * Math.PI * 80}
-                initial={{ strokeDashoffset: 2 * Math.PI * 80 }}
-                animate={{ strokeDashoffset: 2 * Math.PI * 80 * (1 - pctCalorias / 100) }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
+                strokeDashoffset={2 * Math.PI * 80 * (1 - pctCalorias / 100)}
+                style={{ transition: 'stroke-dashoffset 1.2s ease-out' }}
                 strokeLinecap="round"
               />
             </svg>
@@ -421,11 +419,9 @@ export function DashboardClient({
               </div>
               {/* Progress bar */}
               <div className="mt-4 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                <motion.div
+                <div
                   className="h-full bg-emerald-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pctProteinas}%` }}
-                  transition={{ duration: 1 }}
+                  style={{ width: `${pctProteinas}%`, transition: 'width 1s ease-out' }}
                 />
               </div>
             </div>
@@ -449,11 +445,9 @@ export function DashboardClient({
               </div>
               {/* Progress bar */}
               <div className="mt-4 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                <motion.div
+                <div
                   className="h-full bg-blue-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pctCarboidratos}%` }}
-                  transition={{ duration: 1 }}
+                  style={{ width: `${pctCarboidratos}%`, transition: 'width 1s ease-out' }}
                 />
               </div>
             </div>
@@ -477,11 +471,9 @@ export function DashboardClient({
               </div>
               {/* Progress bar */}
               <div className="mt-4 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                <motion.div
+                <div
                   className="h-full bg-amber-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pctGorduras}%` }}
-                  transition={{ duration: 1 }}
+                  style={{ width: `${pctGorduras}%`, transition: 'width 1s ease-out' }}
                 />
               </div>
             </div>
@@ -570,25 +562,18 @@ export function DashboardClient({
       </div>
 
       {/* Modal Adicionar Refeição */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleCloseModal}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            onClick={handleCloseModal}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300"
+          />
 
-            {/* Content Container */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]"
-            >
+          {/* Content Container */}
+          <div
+            className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] transition-all duration-300 transform scale-100 opacity-100"
+          >
               {/* Header */}
               <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
                 <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -693,11 +678,8 @@ export function DashboardClient({
                         />
                       )}
                       {/* Scanline line overlay */}
-                      <motion.div
-                        className="absolute left-0 right-0 h-1 bg-blue-500 shadow-[0_0_10px_#2563EB]"
-                        initial={{ top: '0%' }}
-                        animate={{ top: '100%' }}
-                        transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                      <div
+                        className="absolute left-0 right-0 h-1 bg-blue-500 shadow-[0_0_10px_#2563EB] animate-scan"
                       />
                     </div>
                     <div className="space-y-2 max-w-[280px]">
@@ -880,31 +862,23 @@ export function DashboardClient({
                   </button>
                 </div>
               )}
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
       {/* Modal Paywall Premium */}
-      <AnimatePresence>
-        {isPaywallOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsPaywallOpen(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
+      {isPaywallOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsPaywallOpen(false)}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300"
+          />
 
-            {/* Content Container */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md overflow-hidden rounded-[2.5rem] bg-white p-8 shadow-2xl border border-slate-100 text-center flex flex-col items-center"
-            >
+          {/* Content Container */}
+          <div
+            className="relative w-full max-w-md overflow-hidden rounded-[2.5rem] bg-white p-8 shadow-2xl border border-slate-100 text-center flex flex-col items-center transition-all duration-300 transform scale-100 opacity-100"
+          >
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 border border-amber-100 shadow-md shadow-amber-50/50 mb-6 animate-pulse">
                 <IconSparkles className="h-8 w-8 stroke-[1.5]" />
               </div>
@@ -948,10 +922,9 @@ export function DashboardClient({
                   Voltar ao painel
                 </button>
               </div>
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   )
 }
