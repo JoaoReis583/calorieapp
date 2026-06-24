@@ -1,0 +1,56 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String   @id @default(uuid())
+  nome             String
+  email            String   @unique
+  senha            String
+  meta_calorias    Int      @default(2000)
+  meta_proteinas   Float    @default(150)
+  meta_carboidratos Float   @default(250)
+  meta_gorduras    Float    @default(70)
+  plano            String   @default("FREE")
+  assinatura_valida_ate DateTime?
+  cakto_transaction_id String?
+  criado_em        DateTime @default(now())
+  meals            Meal[]
+
+  @@map("users")
+}
+
+model Meal {
+  id           String     @id @default(uuid())
+  user_id      String
+  user         User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  foto         String     // URL do Cloudinary (ou mock placeholder)
+  calorias     Int
+  proteinas    Float
+  carboidratos Float
+  gorduras     Float
+  fibras       Float      @default(0)
+  data         DateTime   @default(now())
+  items        MealItem[]
+
+  @@map("meals")
+}
+
+model MealItem {
+  id                String @id @default(uuid())
+  meal_id           String
+  meal              Meal   @relation(fields: [meal_id], references: [id], onDelete: Cascade)
+  nome              String
+  quantidade_gramas Float
+  calorias          Int
+  proteinas         Float
+  carboidratos      Float
+  gorduras          Float
+
+  @@map("meal_items")
+}
