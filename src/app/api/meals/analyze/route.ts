@@ -58,6 +58,77 @@ const MOCK_MEALS = [
   }
 ]
 
+function getMockMealByDescription(description?: string) {
+  if (!description) {
+    const randomIndex = Math.floor(Math.random() * MOCK_MEALS.length)
+    return MOCK_MEALS[randomIndex]
+  }
+
+  const descLower = description.toLowerCase()
+
+  // 1. Salmão / Peixe / Batata Doce / Brócolis
+  if (
+    descLower.includes('salmão') ||
+    descLower.includes('salmao') ||
+    descLower.includes('peixe') ||
+    descLower.includes('batata doce') ||
+    descLower.includes('brocolis') ||
+    descLower.includes('brócolis')
+  ) {
+    return MOCK_MEALS[3]
+  }
+
+  // 2. Ovo / Pão / Pao / Café / Cafe / Mamão / Mamão / Café da manhã
+  if (
+    descLower.includes('ovo') ||
+    descLower.includes('pão') ||
+    descLower.includes('pao') ||
+    descLower.includes('mamão') ||
+    descLower.includes('mamao') ||
+    descLower.includes('café') ||
+    descLower.includes('cafe') ||
+    descLower.includes('manha') ||
+    descLower.includes('manhã')
+  ) {
+    return MOCK_MEALS[2]
+  }
+
+  // 3. Macarrão / Macarrao / Massa / Espaguete / Pasta / Lasanha / Carne moída / Bolonhesa
+  if (
+    descLower.includes('macarrão') ||
+    descLower.includes('macarrao') ||
+    descLower.includes('massa') ||
+    descLower.includes('espaguete') ||
+    descLower.includes('pasta') ||
+    descLower.includes('lasanha') ||
+    descLower.includes('bolonhesa') ||
+    descLower.includes('carne moída') ||
+    descLower.includes('carne moida')
+  ) {
+    return MOCK_MEALS[1]
+  }
+
+  // 4. Frango / Arroz / Feijão / Feijao / Carne / Salada / Almoço / Janta
+  if (
+    descLower.includes('frango') ||
+    descLower.includes('arroz') ||
+    descLower.includes('feijão') ||
+    descLower.includes('feijao') ||
+    descLower.includes('salada') ||
+    descLower.includes('carne') ||
+    descLower.includes('almoço') ||
+    descLower.includes('almoco') ||
+    descLower.includes('janta') ||
+    descLower.includes('jantar')
+  ) {
+    return MOCK_MEALS[0]
+  }
+
+  // Default: aleatório
+  const randomIndex = Math.floor(Math.random() * MOCK_MEALS.length)
+  return MOCK_MEALS[randomIndex]
+}
+
 export async function POST(req: Request) {
   try {
     const { url, description } = await req.json()
@@ -79,9 +150,8 @@ export async function POST(req: Request) {
       // Simular delay de análise da IA (1.5 segundos)
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      // Selecionar um prato mockado aleatório
-      const randomIndex = Math.floor(Math.random() * MOCK_MEALS.length)
-      const mockResult = MOCK_MEALS[randomIndex]
+      // Selecionar prato baseado na descrição (Mock Inteligente)
+      const mockResult = getMockMealByDescription(description)
 
       return NextResponse.json(mockResult)
     }
@@ -165,13 +235,12 @@ Estrutura do JSON esperada:
       // Simular delay de análise da IA (1.5 segundos)
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      // Selecionar um prato mockado aleatório
-      const randomIndex = Math.floor(Math.random() * MOCK_MEALS.length)
-      const mockResult = MOCK_MEALS[randomIndex]
+      // Selecionar prato baseado na descrição (Mock Inteligente)
+      const mockResult = getMockMealByDescription(description)
 
       return NextResponse.json({
         ...mockResult,
-        warning: 'Excedeu a cota da OpenAI ou ocorreu um erro. Usando dados fictícios do modo Sandbox.'
+        warning: 'Excedeu a cota da OpenAI ou ocorreu um erro. Usando dados fictícios do modo Sandbox baseado na descrição.'
       })
     }
     
