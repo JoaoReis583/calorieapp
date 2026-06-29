@@ -70,16 +70,17 @@ function writeJsonDb(data: { users: any[]; meals: any[]; meal_items: any[] }) {
 export const dbService = {
   // ---- USUÁRIOS ----
   async findUserByEmail(email: string) {
+    const cleanEmail = email.trim().toLowerCase()
     if (await isPgAvailable()) {
       try {
-        return await prisma.user.findUnique({ where: { email } })
+        return await prisma.user.findUnique({ where: { email: cleanEmail } })
       } catch {
         pgAvailable = false
       }
     }
     console.warn('Banco Postgres indisponível. Fazendo busca de usuário em db.json local.')
     const db = readJsonDb()
-    return db.users.find((u) => u.email === email) || null
+    return db.users.find((u) => u.email.trim().toLowerCase() === cleanEmail) || null
   },
 
   async findUserById(id: string) {
@@ -100,13 +101,15 @@ export const dbService = {
     const defaultProteinas = 150
     const defaultCarboidratos = 250
     const defaultGorduras = 70
+    
+    const cleanEmail = email.trim().toLowerCase()
 
     if (await isPgAvailable()) {
       try {
         return await prisma.user.create({
           data: {
             nome,
-            email,
+            email: cleanEmail,
             senha: senhaHash,
             meta_calorias: defaultCalorias,
             meta_proteinas: defaultProteinas,
@@ -123,14 +126,14 @@ export const dbService = {
     console.warn('Banco Postgres indisponível. Criando usuário em db.json local.')
     const db = readJsonDb()
 
-    if (db.users.some((u) => u.email === email)) {
+    if (db.users.some((u) => u.email.trim().toLowerCase() === cleanEmail)) {
       throw new Error('Usuário com este e-mail já cadastrado.')
     }
 
     const newUser = {
       id: uuidv4(),
       nome,
-      email,
+      email: cleanEmail,
       senha: senhaHash,
       meta_calorias: defaultCalorias,
       meta_proteinas: defaultProteinas,
