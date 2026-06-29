@@ -7,6 +7,10 @@ import path from 'path'
 const isOpenAiConfigured = !!process.env.OPENAI_API_KEY
 const openai = isOpenAiConfigured ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null
 
+// Inicializar Google Gemini se a chave estiver configurada
+const geminiApiKey = process.env.GEMINI_API_KEY
+const isGeminiConfigured = !!geminiApiKey
+
 // Pratos simulados para o Modo Sandbox de IA
 const MOCK_MEALS = [
   {
@@ -140,34 +144,32 @@ export async function POST(req: Request) {
       )
     }
 
-    // 1. Modo Sandbox se OpenAI não estiver configurado
-    if (!isOpenAiConfigured || !openai) {
-      console.warn('Chave da OpenAI não configurada. Simulando análise por IA (Modo Sandbox)...')
-      if (description) {
-        console.info(`Descrição fornecida pelo usuário: "${description}"`)
-      }
-      
-      // Simular delay de análise da IA (1.5 segundos)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Selecionar prato baseado na descrição (Mock Inteligente)
-      const mockResult = getMockMealByDescription(description)
-
-      return NextResponse.json(mockResult)
-    }
-
-    // 2. Modo Produção: Análise real via OpenAI Vision
-    console.log('Realizando análise real da imagem com OpenAI Vision API...')
-    
+    // 1. Processamento da Imagem para Base64 (usado por ambas as APIs de IA)
     let base64Image = ''
+    let base64DataOnly = '' // Apenas o base64 puro sem prefixo mime-type, para o Gemini
+    let mimeType = 'image/jpeg'
 
-    // Se for uma imagem salva localmente, lemos o arquivo para obter o base64
     if (url.startsWith('/uploads/')) {
       const filePath = path.join(process.cwd(), 'public', url)
       if (fs.existsSync(filePath)) {
         const fileBuffer = fs.readFileSync(filePath)
-        const mimeType = url.endsWith('.png') ? 'image/png' : 'image/jpeg'
-        base64Image = `data:${mimeType};base64,${fileBuffer.toString('base64')}`
+        mimeType = url.endsWith('.png') ? 'image/png' : 'image/jpeg'
+        base64DataOnly = fileBuffer.toString('base64')
+        base64Image = `data:${mimeType};base64,${base64DataOnly}`
+      }
+    } else if (url.startsWith('http')) {
+      try {
+        const imageRes = await fetch(url)
+        const arrayBuffer = await imageRes.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        base64DataOnly = buffer.toString('base64')
+        const contentType = imageRes.headers.get('content-type')
+        if (contentType) {
+          mimeType = contentType
+        }
+        base64Image = `data:${mimeType};base64,${base64DataOnly}`
+      } catch (fetchErr) {
+        console.error('Erro ao baixar imagem remota para base64:', fetchErr)
       }
     }
 
@@ -207,30 +209,12 @@ Estrutura do JSON esperada:
   "gorduras_totais": 5.2
 }`
 
-    let responseContent = ''
-    try {
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageInput,
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: 1000,
-        temperature: 0.2,
-      })
-      responseContent = response.choices[0]?.message?.content || ''
-    } catch (apiError: any) {
-      console.warn('Erro ao chamar OpenAI API, ativando fallback automático para o Modo Sandbox (Mock):', apiError.message || apiError)
+    // 2. Modo Sandbox se nenhuma IA estiver configurada no .env
+    if ((!isOpenAiConfigured || !openai) && !isGeminiConfigured) {
+      console.warn('Nenhuma chave de IA (Gemini ou OpenAI) configurada. Simulando análise por IA (Modo Sandbox)...')
+      if (description) {
+        console.info(`Descrição fornecida pelo usuário: "${description}"`)
+      }
       
       // Simular delay de análise da IA (1.5 segundos)
       await new Promise((resolve) => setTimeout(resolve, 1500))
@@ -238,33 +222,122 @@ Estrutura do JSON esperada:
       // Selecionar prato baseado na descrição (Mock Inteligente)
       const mockResult = getMockMealByDescription(description)
 
-      return NextResponse.json({
-        ...mockResult,
-        warning: 'Excedeu a cota da OpenAI ou ocorreu um erro. Usando dados fictícios do modo Sandbox baseado na descrição.'
-      })
+      return NextResponse.json(mockResult)
     }
-    
-    // Limpar marcações de código markdown se o GPT tiver gerado por engano
-    const cleanJsonString = responseContent
-      .replace(/```json/gi, '')
-      .replace(/```/g, '')
-      .trim()
 
-    try {
-      const parsedResult = JSON.parse(cleanJsonString)
-      return NextResponse.json(parsedResult)
-    } catch (parseError) {
-      console.error('Erro ao fazer parse do JSON retornado pela OpenAI:', responseContent)
-      // Se quebrar, retornar um fallback estruturado a partir do texto
-      return NextResponse.json(
-        { error: 'A IA não retornou um formato JSON válido. Tente enviar outra foto.' },
-        { status: 422 }
-      )
+    // 3. Modo Produção: Google Gemini (Grátis e prioritário se configurado no .env)
+    if (isGeminiConfigured) {
+      console.log('Realizando análise real da imagem com Google Gemini API (Modo Gratuito)...')
+      try {
+        const payloadData = base64DataOnly || (base64Image ? base64Image.split(';base64,')[1] : '')
+        
+        if (payloadData) {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`
+
+          const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: prompt },
+                    {
+                      inlineData: {
+                        mimeType: mimeType,
+                        data: payloadData,
+                      },
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                responseMimeType: 'application/json',
+              },
+            }),
+          })
+
+          if (response.ok) {
+            const resData = await response.json()
+            const textResponse = resData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+            const cleanJsonString = textResponse
+              .replace(/```json/gi, '')
+              .replace(/```/g, '')
+              .trim()
+
+            const parsedResult = JSON.parse(cleanJsonString)
+            return NextResponse.json(parsedResult)
+          } else {
+            const errText = await response.text()
+            console.error(`Erro na API do Gemini: ${response.status} - ${errText}`)
+          }
+        }
+      } catch (geminiError: any) {
+        console.error('Erro ao analisar imagem com Google Gemini:', geminiError.message || geminiError)
+        // Se falhar o Gemini, continua no fluxo para tentar a OpenAI (se configurada)
+      }
     }
+
+    // 4. Modo Produção: OpenAI Vision (Pago, fallback se o Gemini não estiver configurado ou falhar)
+    if (isOpenAiConfigured && openai) {
+      console.log('Realizando análise real da imagem com OpenAI Vision API...')
+      
+      let responseContent = ''
+      try {
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageInput,
+                  },
+                },
+              ],
+            },
+          ],
+          max_tokens: 1000,
+          temperature: 0.2,
+        })
+        responseContent = response.choices[0]?.message?.content || ''
+        
+        const cleanJsonString = responseContent
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .trim()
+
+        const parsedResult = JSON.parse(cleanJsonString)
+        return NextResponse.json(parsedResult)
+      } catch (apiError: any) {
+        console.warn('Erro ao chamar OpenAI API, ativando fallback automático para o Modo Sandbox (Mock):', apiError.message || apiError)
+        
+        // Simular delay de análise da IA (1.5 segundos)
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+
+        const mockResult = getMockMealByDescription(description)
+
+        return NextResponse.json({
+          ...mockResult,
+          warning: 'Excedeu a cota da OpenAI ou ocorreu um erro. Usando dados fictícios do modo Sandbox baseado na descrição.'
+        })
+      }
+    }
+
+    // Se nenhuma IA estiver configurada ou ambas falharem, cai no mock inteligente final
+    console.warn('Ambas as IAs falharam ou não estão configuradas. Ativando fallback Sandbox...')
+    const mockResult = getMockMealByDescription(description)
+    return NextResponse.json(mockResult)
   } catch (error: any) {
-    console.error('Erro ao analisar imagem com OpenAI:', error)
+    console.error('Erro geral ao processar análise de imagem:', error)
     return NextResponse.json(
-      { error: error.message || 'Erro ao processar análise da refeição.' },
+      { error: error.message || 'Erro interno ao processar análise da refeição.' },
       { status: 500 }
     )
   }
