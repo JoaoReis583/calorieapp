@@ -232,7 +232,7 @@ Estrutura do JSON esperada:
         const payloadData = base64DataOnly || (base64Image ? base64Image.split(';base64,')[1] : '')
         
         if (payloadData) {
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`
 
           const response = await fetch(geminiUrl, {
             method: 'POST',
